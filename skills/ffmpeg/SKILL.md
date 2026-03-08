@@ -54,13 +54,39 @@ Response includes: status, progress, outputs (with url, filename, size, metadata
 
 - `pending` → `running` → `completed` or `failed`
 
+### Upload File
+
+If the user provides a local file path, upload it first to get a public URL.
+
+**Multipart upload:**
+
+```bash
+curl -s -X POST https://files-api.ffhub.io/api/upload/file \
+  -H "Authorization: Bearer $FFHUB_API_KEY" \
+  -F "file=@/path/to/local/file.mp4"
+```
+
+**Response (HTTP 201):**
+
+```json
+{
+  "url": "https://storage.ffhub.io/tmp/uploads/{user_id}/{hash}.mp4",
+  "size": 12345,
+  "content_type": "video/mp4",
+  "expires_at": "2026-03-09T08:15:32.000Z"
+}
+```
+
+Use the returned `url` as the FFmpeg input. Max file size: 1GB. Uploaded files expire in 24 hours.
+
 ## Workflow
 
 1. **Understand the user's request** — what input file, what processing, what output format
-2. **Build the FFmpeg command** — the input MUST be a public URL (http/https). If the user provides a local file path, tell them to upload it first or provide a URL
-3. **Submit the task** — call the create task API
-4. **Poll for result** — check task status every 5 seconds until completed or failed (max 60 attempts)
-5. **Return the result** — show the download URL(s) and file info
+2. **Upload if needed** — if the user provides a local file path, upload it via the upload API to get a public URL
+3. **Build the FFmpeg command** — the input MUST be a public URL (http/https)
+4. **Submit the task** — call the create task API
+5. **Poll for result** — check task status every 5 seconds until completed or failed (max 60 attempts)
+6. **Return the result** — show the download URL(s) and file info
 
 ## FFmpeg Command Rules
 
