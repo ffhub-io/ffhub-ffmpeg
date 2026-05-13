@@ -45,47 +45,68 @@ Response: `{"task_id": "xxx"}`
 ### Query Task
 
 ```bash
-curl -s https://api.ffhub.io/v1/tasks/TASK_ID
+curl -s https://api.ffhub.io/v1/tasks/TASK_ID \
+  -H "Authorization: Bearer $FFHUB_API_KEY"
 ```
 
 Response includes: status, progress, outputs (with url, filename, size, metadata), error.
 
+The `Authorization` header is required — the endpoint only returns tasks owned by the caller.
+
 ## Task Status
 
-- `pending` → `running` → `completed` or `failed`
+- `pending` → `running` → `succeeded` or `failed`
+
+(Older API builds used `completed` instead of `succeeded`; treat both as terminal-success when checking.)
 
 ### Upload File
 
-If the user provides a local file path, upload it first to get a public URL.
+If the user provides a local file path, upload it first to get a public URL. The flow is two-step: ask the API for a one-time presigned PUT URL, then upload the bytes directly to R2.
 
-**Multipart upload:**
+**Step 1 — get a signed URL:**
 
 ```bash
-curl -s -X POST https://files-api.ffhub.io/api/upload/file \
+curl -s -X POST https://api.ffhub.io/v1/uploads/sign \
   -H "Authorization: Bearer $FFHUB_API_KEY" \
-  -F "file=@/path/to/local/file.mp4"
+  -H "Content-Type: application/json" \
+  -d '{
+    "filename": "file.mp4",
+    "size": 12345,
+    "content_type": "video/mp4"
+  }'
 ```
 
-**Response (HTTP 201):**
+**Response:**
 
 ```json
 {
-  "url": "https://storage.ffhub.io/tmp/uploads/{user_id}/{hash}.mp4",
-  "size": 12345,
-  "content_type": "video/mp4",
-  "expires_at": "2026-03-09T08:15:32.000Z"
+  "upload_url": "https://...r2...?X-Amz-Signature=...",
+  "public_url": "https://storage.ffhub.io/tmp/uploads/{user_id}/{hash}.mp4",
+  "key": "tmp/uploads/...",
+  "expires_at": "2026-03-09T08:15:32.000Z",
+  "content_type": "video/mp4"
 }
 ```
 
-Use the returned `url` as the FFmpeg input. Max file size: 1GB. Uploaded files expire in 24 hours.
+**Step 2 — PUT the file bytes to `upload_url`:**
+
+```bash
+curl -s -X PUT "$UPLOAD_URL" \
+  -H "Content-Type: video/mp4" \
+  --data-binary @/path/to/local/file.mp4
+```
+
+`Content-Type` MUST match the value sent in step 1 — R2 rejects mismatches.
+
+Use `public_url` from step 1 as the FFmpeg `-i` input. Max file size: 5 GB (R2 single-PUT cap). Uploaded files expire after 7 days.
 
 ## Workflow
 
 1. **Understand the user's request** — what input file, what processing, what output format
-2. **Upload if needed** — if the user provides a local file path, upload it via the upload API to get a public URL
+2. **Upload if needed** — if the user provides a local file path, run the two-step upload (sign + PUT to R2) to get a public URL
 3. **Build the FFmpeg command** — the input MUST be a public URL (http/https)
 4. **Submit the task** — call the create task API
-5. **Poll for result** — check task status every 5 seconds until completed or failed (max 60 attempts)
+5. **Poll for result** — check task status every 2-5 seconds until `succeeded` or `failed` (max ~60 attempts)
 6. **Return the result** — show the download URL(s) and file info
 
 ## FFmpeg Command Rules
@@ -138,20 +159,22 @@ ffmpeg -i INPUT_URL -ss 00:00:05 -t 3 -vf "fps=10,scale=480:-1" output.gif
 
 ## Polling Script
 
-Use this pattern to poll for task completion:
+Use this pattern to poll for task completion. Always send the `Authorization` header — anonymous task queries are rejected.
 
 ```bash
 TASK_ID="the_task_id"
 for i in $(seq 1 60); do
-  RESULT=$(curl -s https://api.ffhub.io/v1/tasks/$TASK_ID)
-  STATUS=$(echo $RESULT | jq -r '.status')
-  PROGRESS=$(echo $RESULT | jq -r '.progress')
+  RESULT=$(curl -s "https://api.ffhub.io/v1/tasks/$TASK_ID" \
+    -H "Authorization: Bearer $FFHUB_API_KEY")
+  STATUS=$(echo "$RESULT" | jq -r '.status')
+  PROGRESS=$(echo "$RESULT" | jq -r '.progress')
   echo "Status: $STATUS, Progress: $PROGRESS%"
-  if [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ]; then
-    echo $RESULT | jq .
+  # Accept both 'succeeded' (current) and 'completed' (older backends).
+  if [ "$STATUS" = "succeeded" ] || [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ]; then
+    echo "$RESULT" | jq .
     break
   fi
-  sleep 5
+  sleep 3
 done
 ```
 
