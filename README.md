@@ -21,8 +21,6 @@ Process video and audio files in the cloud via [FFHub.io](https://ffhub.io) API.
 
 ## Install
 
-### Method 1: npx skills (recommended)
-
 Works with Claude Code, Cursor, Codex, OpenCode, Cline, Windsurf, and [40+ agents](https://github.com/vercel-labs/skills#supported-agents).
 
 ```bash
@@ -41,16 +39,10 @@ npx skills add ffhub-io/ffhub-ffmpeg -g
 npx skills add ffhub-io/ffhub-ffmpeg --list
 ```
 
-### Method 2: Claude Code Plugin
-
-```bash
-claude /plugin install ffhub-io/ffhub-ffmpeg
-```
-
 ## Setup
 
 1. Sign up at [ffhub.io](https://ffhub.io)
-2. Get your API key from **Settings > API Keys**
+2. Get your API key from **Dashboard > API Keys**
 3. Set the environment variable:
 
 ```bash

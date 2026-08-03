@@ -21,8 +21,6 @@
 
 ## インストール
 
-### 方法 1：npx skills（推奨）
-
 Claude Code、Cursor、Codex、OpenCode、Cline、Windsurf など [40 以上のエージェント](https://github.com/vercel-labs/skills#supported-agents) に対応。
 
 ```bash
@@ -41,16 +39,10 @@ npx skills add ffhub-io/ffhub-ffmpeg -g
 npx skills add ffhub-io/ffhub-ffmpeg --list
 ```
 
-### 方法 2：Claude Code プラグイン
-
-```bash
-claude /plugin install ffhub-io/ffhub-ffmpeg
-```
-
 ## セットアップ
 
 1. [ffhub.io](https://ffhub.io) でアカウントを作成
-2. **Settings > API Keys** から API キーを取得
+2. **Dashboard > API Keys** から API キーを取得
 3. 環境変数を設定：
 
 ```bash

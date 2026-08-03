@@ -21,8 +21,6 @@
 
 ## 安装
 
-### 方式一：npx skills（推荐）
-
 支持 Claude Code、Cursor、Codex、OpenCode、Cline、Windsurf 等 [40+ 代理工具](https://github.com/vercel-labs/skills#supported-agents)。
 
 ```bash
@@ -41,16 +39,10 @@ npx skills add ffhub-io/ffhub-ffmpeg -g
 npx skills add ffhub-io/ffhub-ffmpeg --list
 ```
 
-### 方式二：Claude Code 插件
-
-```bash
-claude /plugin install ffhub-io/ffhub-ffmpeg
-```
-
 ## 配置
 
 1. 在 [ffhub.io](https://ffhub.io) 注册账号
-2. 在 **Settings > API Keys** 页面获取 API Key
+2. 在 **Dashboard > API Keys** 页面获取 API Key
 3. 设置环境变量：
 
 ```bash

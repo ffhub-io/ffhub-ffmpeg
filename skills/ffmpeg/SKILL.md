@@ -2,7 +2,7 @@
 name: ffmpeg
 description: Process video/audio files using FFHub.io cloud FFmpeg API. Use when the user wants to convert, compress, trim, resize, extract audio, generate thumbnails, or perform any FFmpeg operation on media files.
 argument-hint: "[describe what you want to do with your video/audio file]"
-allowed-tools: Bash(curl *), Bash(echo *), Bash(jq *)
+allowed-tools: Bash(curl *), Bash(echo *), Bash(jq *), Bash(sleep *)
 ---
 
 # FFHub - Cloud FFmpeg Processing
@@ -19,7 +19,7 @@ echo $FFHUB_API_KEY
 
 If the key is empty or not set, tell the user:
 1. Go to https://ffhub.io to sign up
-2. Get an API key from Settings > API Keys
+2. Get an API key from Dashboard > API Keys
 3. Set it: `export FFHUB_API_KEY=your_key_here`
 
 Do NOT proceed without a valid API key.
@@ -57,9 +57,18 @@ The `Authorization` header is required — the endpoint only returns tasks owned
 
 - `pending` → `running` → `succeeded` or `failed`
 
-(Older API builds used `completed` instead of `succeeded`; treat both as terminal-success when checking.)
+## Credits
 
-### Upload File
+Tasks cost credits, reserved when the task is created and settled from actual processing time.
+
+If create-task returns **HTTP 402** (`insufficient credits`), stop and tell the user to top up at
+https://ffhub.io/pricing — retrying will not help. To check the balance first:
+
+```bash
+curl -s https://api.ffhub.io/v1/me -H "Authorization: Bearer $FFHUB_API_KEY" | jq '.available_credits'
+```
+
+## Upload File
 
 If the user provides a local file path, upload it first to get a public URL. The flow is two-step: ask the API for a one-time presigned PUT URL, then upload the bytes directly to R2.
 
@@ -69,12 +78,11 @@ If the user provides a local file path, upload it first to get a public URL. The
 curl -s -X POST https://api.ffhub.io/v1/uploads/sign \
   -H "Authorization: Bearer $FFHUB_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "filename": "file.mp4",
-    "size": 12345,
-    "content_type": "video/mp4"
-  }'
+  -d '{"filename": "file.mp4"}'
 ```
+
+Only `filename` is required — the extension decides the content type. Pass `content_type`
+explicitly only when the extension is misleading.
 
 **Response:**
 
@@ -96,7 +104,7 @@ curl -s -X PUT "$UPLOAD_URL" \
   --data-binary @/path/to/local/file.mp4
 ```
 
-`Content-Type` MUST match the value sent in step 1 — R2 rejects mismatches.
+`Content-Type` MUST match the `content_type` returned in step 1 — R2 rejects mismatches.
 
 Use `public_url` from step 1 as the FFmpeg `-i` input. Max file size: 5 GB (R2 single-PUT cap). Uploaded files expire after 7 days.
 
@@ -105,14 +113,16 @@ Use `public_url` from step 1 as the FFmpeg `-i` input. Max file size: 5 GB (R2 s
 1. **Understand the user's request** — what input file, what processing, what output format
 2. **Upload if needed** — if the user provides a local file path, run the two-step upload (sign + PUT to R2) to get a public URL
 3. **Build the FFmpeg command** — the input MUST be a public URL (http/https)
-4. **Submit the task** — call the create task API
+4. **Submit the task** — call the create task API (HTTP 402 means out of credits, see above)
 5. **Poll for result** — check task status every 2-5 seconds until `succeeded` or `failed` (max ~60 attempts)
 6. **Return the result** — show the download URL(s) and file info
 
 ## FFmpeg Command Rules
 
-- Input (`-i`) MUST be a public HTTP/HTTPS URL
+- Input (`-i`) MUST be a public HTTP/HTTPS URL — `localhost` and private/internal IPs are rejected
 - Output filename should be simple, no paths (e.g., `output.mp4`)
+- No shell operators (`|`, `&&`, `;`, `>`, `<`) — the command is parsed, not run through a shell
+- Filters may reference remote files only: `movie=https://...` is fine, a local path is not
 - Supported output formats:
   - Video: .mp4, .webm, .mkv, .avi, .mov, .flv
   - Audio: .mp3, .wav, .aac, .ogg, .flac, .m4a
@@ -169,14 +179,17 @@ for i in $(seq 1 60); do
   STATUS=$(echo "$RESULT" | jq -r '.status')
   PROGRESS=$(echo "$RESULT" | jq -r '.progress')
   echo "Status: $STATUS, Progress: $PROGRESS%"
-  # Accept both 'succeeded' (current) and 'completed' (older backends).
-  if [ "$STATUS" = "succeeded" ] || [ "$STATUS" = "completed" ] || [ "$STATUS" = "failed" ]; then
+  if [ "$STATUS" = "succeeded" ] || [ "$STATUS" = "failed" ]; then
     echo "$RESULT" | jq .
     break
   fi
   sleep 3
 done
 ```
+
+This gives up after ~3 minutes, but the task keeps running server-side (the backend allows up to
+an hour). If the loop ends while the task is still `pending` or `running`, do NOT report a
+failure — give the user the `task_id` and the query command so they can check back later.
 
 ## Output Format
 

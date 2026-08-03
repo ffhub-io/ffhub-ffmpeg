@@ -21,8 +21,6 @@
 
 ## Установка
 
-### Способ 1: npx skills (рекомендуется)
-
 Совместим с Claude Code, Cursor, Codex, OpenCode, Cline, Windsurf и [40+ агентами](https://github.com/vercel-labs/skills#supported-agents).
 
 ```bash
@@ -41,16 +39,10 @@ npx skills add ffhub-io/ffhub-ffmpeg -g
 npx skills add ffhub-io/ffhub-ffmpeg --list
 ```
 
-### Способ 2: Плагин Claude Code
-
-```bash
-claude /plugin install ffhub-io/ffhub-ffmpeg
-```
-
 ## Настройка
 
 1. Зарегистрируйтесь на [ffhub.io](https://ffhub.io)
-2. Получите API-ключ в разделе **Settings > API Keys**
+2. Получите API-ключ в разделе **Dashboard > API Keys**
 3. Установите переменную окружения:
 
 ```bash
