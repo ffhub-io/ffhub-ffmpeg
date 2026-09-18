@@ -99,7 +99,7 @@ All processing happens in the cloud — fast, reliable, and no local dependencie
 
 ## Requirements
 
-- [FFHub.io](https://ffhub.io) API key (free tier available)
+- [FFHub.io](https://ffhub.io) API key (100 credits granted once at sign-up, then one-time credit packs — no subscription)
 - `curl` and `jq` (pre-installed on most systems)
 
 ## Manage Skills

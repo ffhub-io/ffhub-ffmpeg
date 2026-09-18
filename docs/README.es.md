@@ -99,7 +99,7 @@ Todo el procesamiento ocurre en la nube — rápido, confiable y sin dependencia
 
 ## Requisitos
 
-- API key de [FFHub.io](https://ffhub.io) (nivel gratuito disponible)
+- API key de [FFHub.io](https://ffhub.io) (el registro da 100 créditos una sola vez; después, paquetes de créditos de pago único, sin suscripción)
 - `curl` y `jq` (preinstalados en la mayoría de los sistemas)
 
 ## Gestión de habilidades

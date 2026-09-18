@@ -110,7 +110,11 @@ Use `public_url` from step 1 as the FFmpeg `-i` input. Max file size: 5 GB (R2 s
 
 ## Workflow
 
-1. **Understand the user's request** — what input file, what processing, what output format
+1. **Understand the user's request** — what input file, what processing, what output format.
+   If the input is a platform page link (YouTube, TikTok, X, Bilibili, Vimeo, …), stop here:
+   the API rejects it with HTTP 400 (see *FFmpeg Command Rules*). Do not build or submit the
+   command — tell the user to download the file first and give you the local path or a direct
+   media URL.
 2. **Upload if needed** — if the user provides a local file path, run the two-step upload (sign + PUT to R2) to get a public URL
 3. **Build the FFmpeg command** — the input MUST be a public URL (http/https)
 4. **Submit the task** — call the create task API (HTTP 402 means out of credits, see above)
@@ -120,6 +124,16 @@ Use `public_url` from step 1 as the FFmpeg `-i` input. Max file size: 5 GB (R2 s
 ## FFmpeg Command Rules
 
 - Input (`-i`) MUST be a public HTTP/HTTPS URL — `localhost` and private/internal IPs are rejected
+- **Page links from video/audio platforms are rejected with HTTP 400** — those URLs serve HTML,
+  not a media file. Blocked hosts (and all their subdomains, e.g. `m.youtube.com`):
+  `youtube.com`, `youtu.be`, `facebook.com`, `fb.watch`, `instagram.com`, `tiktok.com`,
+  `douyin.com`, `x.com`, `twitter.com`, `bilibili.com`, `vimeo.com`, `dailymotion.com`,
+  `twitch.tv`, `soundcloud.com`. The same check applies to filter assets
+  (`movie=`, `subtitles=`, `fontfile=`, …), not just `-i`.
+  The only exception is Vimeo's official direct media links under `player.vimeo.com`
+  (paths `/progressive_redirect/…`, `/play/…`, `/external/…`), which are accepted.
+  FFHub does not download from these platforms — ask the user to save the file locally
+  (so it can be uploaded) or to provide a direct media URL.
 - Output filename should be simple, no paths (e.g., `output.mp4`)
 - No shell operators (`|`, `&&`, `;`, `>`, `<`) — the command is parsed, not run through a shell
 - Filters may reference remote files only: `movie=https://...` is fine, a local path is not

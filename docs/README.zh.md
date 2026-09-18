@@ -99,7 +99,7 @@ FFHub 在云端处理文件
 
 ## 系统要求
 
-- [FFHub.io](https://ffhub.io) API Key（有免费额度）
+- [FFHub.io](https://ffhub.io) API Key（注册一次性赠送 100 积分，之后按需购买一次性积分包，没有订阅）
 - `curl` 和 `jq`（大多数系统已预装）
 
 ## 技能管理
